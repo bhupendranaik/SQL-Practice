@@ -5,7 +5,20 @@
 --            DATE FUNCTIONS(CURRENT_DATE or CURDATE, CURRENT_TIME or CURTIME and CURRENT TIMESTAMP or NOW(),EXTRACT(),
 --            INTERVAL(SELECT DATE_ADD(CURRENT_DATE, INTERVAL 5 DAY); ,SELECT DATE_SUB(CURRENT_DATE, INTERVAL 3 MONTH);) ,
 --            STR_TO_DATE(SELECT STR_TO_DATE('2025-03-18', '%Y-%m-%d');),  CAST('2025-03-18' AS DATE)
---  ADVANCED: CTE AND SUBQUERY, Window Function(ROW,RANK,DENSE RANK,
+--  ADVANCED: CTE AND SUBQUERY, Window Function(ROW_NUMBER,RANK,DENSE_RANK,LEAD() and LAG()), Self-Joins,UNION and UNION ALL,INTERSECT,EXCEPT,Pivoting and Un-Pivoting,
+--            UPPER() and LOWER(),LEFT() and RIGHT(),LENGTH(),TRIM(), LTRIM(), RTRIM(), and BTRIM(),POSITION(),CONCAT(),CONCAT_WS(),SUBSTRING(),SPLIT_PART()
+/*
+SQL Order of Execution
+FROM
+WHERE
+GROUP BY
+HAVING
+SELECT
+ORDER BY
+LIMIT
+OFFSET
+*/
+-- QUESTIONS
 -- Q.1 Your given a products table, which contains data about different Microsoft Azure cloud products.
 -- Soln
 select * from products;
@@ -498,4 +511,250 @@ FROM (SELECT category, product, SUM(spend) as total_spend,
 WHERE rnk <= 2
 ORDER BY category, rnk;
 
--- Q.41 
+-- Q.41 (JP Morgan) Before you can answer this question, you want to first get some perspective on how well new credit card launches typically do in their first month.
+-- Write a query that outputs the name of the credit card, and how many cards were issued in its launch month. The launch month is the earliest record in
+-- the monthly_cards_issued table for a given card. Order the results starting from the biggest issued amount.
+-- Soln
+WITH LaunchMonth AS (
+    SELECT 
+        card_name,
+        issued_amount,
+        issue_year,
+        issue_month,
+        ROW_NUMBER() OVER (PARTITION BY card_name ORDER BY MIN(issue_year), MIN(issue_month)) AS rn
+    FROM 
+        monthly_cards_issued
+)
+SELECT 
+    card_name,
+    issued_amount
+FROM 
+    LaunchMonth
+WHERE 
+    rn = 1
+ORDER BY 
+    issued_amount DESC;
+
+-- OR
+
+WITH card_launch AS (
+  SELECT 
+    card_name,
+    issued_amount,
+    issue_year,
+    issue_month,
+    MIN(CONCAT(issue_year, '-', LPAD(CAST(issue_month AS text), 2, '0'))) OVER (
+      PARTITION BY card_name) AS launch_month
+  FROM monthly_cards_issued
+)SELECT 
+  card_name, 
+  COUNT(card_name) AS count_cards,  -- Count the number of cards issued in the launch month
+  issued_amount
+FROM card_launch
+WHERE CONCAT(issue_year, '-', LPAD(CAST(issue_month AS text), 2, '0')) = launch_month  -- Only consider the launch month
+GROUP BY card_name, issued_amount
+ORDER BY issued_amount DESC;  -- Order by the issued amount
+-- OR
+WITH card_launch AS (
+  SELECT 
+    card_name,
+    issued_amount,
+    MAKE_DATE(issue_year, issue_month, 1) AS issue_date,
+    MIN(MAKE_DATE(issue_year, issue_month, 1)) OVER (
+      PARTITION BY card_name) AS launch_date
+  FROM monthly_cards_issued
+)
+
+SELECT 
+  card_name, 
+  issued_amount
+FROM card_launch
+WHERE issue_date = launch_date
+ORDER BY issued_amount DESC;
+
+-- Q.42 (SPOTIFY) Write a query to find the top 5 artists whose songs appear most frequently in the Top 10 of the global_song_rank table. 
+-- Display the top 5 artist names in ascending order, along with their song appearance ranking.
+-- If two or more artists have the same number of song appearances, they should be assigned the same ranking, and the rank numbers should be continuous
+-- Soln
+WITH rank_artist_cte AS(
+SELECT artist_name,
+DENSE_RANK() OVER(ORDER BY COUNT(s.song_id)DESC) as artist_rank
+FROM artists a 
+JOIN songs s ON a.artist_id = s.artist_id
+JOIN global_song_rank g ON s.song_id = g.song_id
+WHERE g.rank <= 10
+GROUP BY artist_name
+) SELECT artist_name, artist_rank
+  FROM rank_artist_cte
+  WHERE artist_rank <= 5;
+
+-- Q.43 (Walmart) Assume you're given a table on Walmart user transactions. Based on their most recent transaction date, write a query that retrieve the users
+-- along with the number of products they bought.
+-- Output the user's most recent transaction date, user ID, and the number of products, sorted in chronological order by the transaction date.
+-- Soln
+WITH customer_cte AS 
+   (SELECT transaction_date, user_id,product_id,
+    DENSE_RANK() OVER(PARTITION BY user_id ORDER BY transaction_date DESC) AS transaction_rank
+    FROM user_transactions
+    )
+    SELECT transaction_date, user_id, 
+    COUNT(product_id) as count_product
+    FROM customer_cte
+    WHERE transaction_rank = 1
+    GROUP BY transaction_date, user_id
+    ORDER BY transaction_date;
+
+-- Q.44 (Google) Assume you're given a table with measurement values obtained from a Google sensor over multiple days with measurements taken multiple times
+-- within each day. Write a query to calculate the sum of odd-numbered and even-numbered measurements separately for a particular day and display the
+-- results in two different columns. Refer to the Example Output below for the desired format.
+-- Definition: Within a day, measurements taken at 1st, 3rd, and 5th times are considered odd-numbered measurements, and measurements taken
+-- at 2nd, 4th, and 6th times are considered even-numbered measurements
+-- Soln
+WITH sum_of_measurement AS
+(
+SELECT measurement_id, CAST(measurement_time AS DATE) AS measurement_day, measurement_value, 
+ROW_NUMBER() OVER(PARTITION BY(CAST(measurement_time AS DATE)) ORDER BY measurement_id) AS rnk
+FROM measurements
+)
+SELECT measurement_day,
+SUM(CASE WHEN rnk % 2 != 0 THEN measurement_value END) AS odd_sum,
+SUM(CASE WHEN rnk % 2 = 0 THEN measurement_value END) AS even_sum
+FROM sum_of_measurement
+GROUP BY measurement_day;
+
+-- Q.45 (Bloomberg) Calculate the difference in closing prices between consecutive months.
+-- Calculate the difference between the closing price of the current month and the closing price from 3 months prior.
+-- Soln
+SELECT
+  date,
+  close,
+  LAG(close, 3) OVER (ORDER BY date) AS three_months_ago_close,
+  close - LAG(close, 3) OVER (ORDER BY date) AS difference
+FROM stock_prices
+WHERE EXTRACT(YEAR FROM date) = 2023 AND ticker = 'GOOG';
+
+-- Q.46 (Wayfair) Assume you're given a table containing information about Wayfair user transactions for different products. Write a query to calculate 
+-- the year-on-year growth rate for the total spend of each product, grouping the results by product ID.
+-- The output should include the year in ascending order, product ID, current year's spend, previous year's spend and year-on-year growth percentage,
+-- rounded to 2 decimal places
+-- Soln
+WITH yearly_spend_cte AS(
+SELECT EXTRACT(YEAR FROM transaction_date) as t_year,
+       product_id,
+       spend AS current_spend,
+LAG(spend) OVER(PARTITION BY product_id ORDER BY EXTRACT(YEAR FROM transaction_date)) AS previous_year_spend
+FROM user_transactions
+)
+SELECT t_year, product_id, current_spend, previous_year_spend,
+  ROUND(((current_spend-previous_year_spend)/previous_year_spend)*100,2) as yearly_growth
+FROM yearly_spend_cte;
+
+-- Q.47 Imagine you're part of the Goodreads Books team and you're designing a book recommendation system that provides users with personalized book
+-- suggestions tailored to their preferences. In other words, if someone loves romance, you want to give them more romantic options. Be cautious when
+-- dealing with large tables. Joining a table to itself can create a lot of matches, which might slow things down. In this case, we're talking about 2,886 rows
+-- Soln
+SELECT b1.genre,
+       b1.book_title AS current_book,
+       b2.book_title AS suggested_book_1,
+       b3.book_title AS suggested_book_2
+FROM goodreads AS b1
+INNER JOIN goodreads AS b2 ON b1.genre = b2.genre
+INNER JOIN goodreads as b3 ON b1.genre = b3.genre
+WHERE b1.book_id != b2.book_id
+  AND b1.book_id != b3.book_id
+  AND b2.book_id != b3.book_id
+ORDER BY b1.book_title
+LIMIT 50;
+
+-- Q.48 Companies often perform salary analyses to ensure fair compensation practices. One useful analysis is to check if there are any employees earning
+-- more than their direct managers. As a HR Analyst, you're asked to identify all employees who earn more than their direct managers.
+-- The result should include the employee's ID and name.
+-- Soln
+SELECT emp.employee_id as emp_id,emp.name as emp_name
+FROM employee emp
+INNER JOIN employee mgr
+ON emp.manager_id = mgr.employee_id
+WHERE emp.salary > mgr.salary;
+
+-- Q.49 20-period moving average for a column called price in a table called sales
+-- Soln
+SELECT dates,price,
+    AVG(price) OVER (ORDER BY dates ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS moving_average
+FROM sales
+ORDER BY dates;
+
+-- Q.50  calculate Year-over-Year (YoY) new customers
+-- Soln
+WITH FirstPurchase AS (
+    SELECT CustomerID,
+           MIN(PurchaseDate) AS FirstPurchaseDate
+    FROM CustomerPurchases
+    GROUP BY CustomerID
+),
+NewCustomers AS (
+    SELECT CustomerID,
+           EXTRACT(YEAR FROM FirstPurchaseDate) AS FirstPurchaseYear
+    FROM FirstPurchase
+)
+SELECT FirstPurchaseYear AS Year,
+       COUNT(CustomerID) AS NewCustomersCount
+FROM NewCustomers
+GROUP BY FirstPurchaseYear
+ORDER BY FirstPurchaseYear;
+
+-- OR
+ 
+WITH FirstPurchase AS (
+    SELECT CustomerID, MIN(PurchaseDate) AS FirstPurchaseDate
+    FROM CustomerPurchases
+    GROUP BY CustomerID
+)
+SELECT EXTRACT(YEAR FROM FirstPurchaseDate) AS FirstPurchaseYear, 
+       COUNT(CustomerID) AS NewCustomersCount         
+FROM FirstPurchase
+GROUP BY EXTRACT(YEAR FROM FirstPurchaseDate) 
+ORDER BY FirstPurchaseYear;
+
+-- Q.51 finding the store with the maximum sales each year
+-- Soln
+SELECT Years, Store, Total_Sales
+FROM (
+    SELECT Years, Store, SUM(Sales) AS Total_Sales,
+           RANK() OVER (PARTITION BY Years ORDER BY SUM(Sales) DESC) AS rnk
+    FROM SalesData
+    GROUP BY Years, Store
+) AS RankedStores
+WHERE rnk = 1
+ORDER BY Year;
+
+-- Q.52 Assume you're given the customer table containing all customer details.
+-- The branch manager is looking for a male customer whose name ends with "son" and he's 20 years old.
+-- Soln
+SELECT * 
+FROM customers
+WHERE lower(customer_name) LIKE '%son' AND age = 20;
+
+-- Q.53 Mss - customer count who bou from single store
+--      SSS - customer count who buy from multiple store
+--      Give count of both
+-- Soln
+SELECT 
+    COUNT(CASE WHEN store_count = 1 THEN 1 END) AS MSS_customers,  
+    COUNT(CASE WHEN store_count > 1 THEN 1 END) AS SSS_customers  
+FROM (
+    SELECT customer_id, COUNT(DISTINCT store_id) AS store_count  
+    FROM orders  
+    GROUP BY customer_id  
+) AS subquery;
+
+
+-- Q.53 Give count of customer sum whose order amount exceed 2000 and count of those whose sum of order amount les than 2000
+-- Soln
+SELECT 
+    COUNT(CASE WHEN total_amount >= 2000 THEN 1 END) AS customers_above_equal_2000,
+    COUNT(CASE WHEN total_amount < 2000 THEN 1 END) AS customers_below_2000
+FROM (
+    SELECT customer_id, SUM(order_amount) AS total_amount
+    FROM orders
+    GROUP BY customer_id
+) AS subquery;
