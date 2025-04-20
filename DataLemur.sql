@@ -23,7 +23,7 @@ OFFSET
 -- Soln
 select * from products;
 
--- Q.2 Given the reviews table, write a query to retrieve the average star rating
+-- Q.2 (Amazon - Average Review Ratings) Given the reviews table, write a query to retrieve the average star rating
 -- for each product, grouped by month. The output should display the month as a
 -- numerical value, product ID, and average star rating rounded to two decimal places.
 -- Sort the output first by month and then by product ID.
@@ -222,7 +222,7 @@ FROM candidates
 GROUP BY candidate_id
 HAVING COUNT(skill) > 2;
 
--- Q.22 Given a table of candidates and their skills, you're tasked with finding the candidates best suited for an open Data Science job.
+-- Q.22 (Linkedin - Data Science Skills) Given a table of candidates and their skills, you're tasked with finding the candidates best suited for an open Data Science job.
 --      You want to find candidates who are proficient in Python, Tableau, and PostgreSQL. Write a query to list the candidates who possess
 --      all of the required skills for the job. Sort the output by candidate ID in ascending order.
 -- Soln
@@ -233,7 +233,7 @@ GROUP BY candidate_id
 HAVING COUNT(skill) = 3
 ORDER BY candidate_id; 
 
--- Q.23 (Robinhood) Assume you're given the tables containing completed trade orders and user details in a Robinhood trading system.
+-- Q.23 (Robinhood - Cities With Completed Trades) Assume you're given the tables containing completed trade orders and user details in a Robinhood trading system.
 -- Write a query to retrieve the top three cities that have the highest number of completed trade orders listed in descending order.
 -- Output the city name and the corresponding number of completed trade orders.
 -- Soln
@@ -301,7 +301,7 @@ FROM pharmacy_sales
 WHERE manufacturer = 'Merck'
 ORDER BY unit_cost;
 
--- Q.28 (TESLA): Tesla is investigating production bottlenecks and they need your help to extract the relevant data. 
+-- Q.28 (TESLA - Unfinished Parts) Tesla is investigating production bottlenecks and they need your help to extract the relevant data. 
 -- Write a query to determine which parts have begun the assembly process but are not yet finished.
 -- Assumptions: parts_assembly table contains all parts currently in production, each at varying stages of the assembly process.
 -- An unfinished part is one that lacks a finish_date.
@@ -356,7 +356,7 @@ SELECT platform,
 FROM marvel_avengers
 GROUP BY platform;
 
--- Q.32 Assume you're given the table on user viewership categorised by device type where the three types are laptop, tablet, and phone.
+-- Q.32 (NY Times - Laptop vs. Mobile Viewership) Assume you're given the table on user viewership categorised by device type where the three types are laptop, tablet, and phone.
 -- Write a query that calculates the total viewership for laptops and mobile devices where mobile is defined as the sum of tablet and phone viewership.
 -- Output the total viewership for laptops as laptop_reviews and the total viewership for mobile devices as mobile_views
 -- Soln
@@ -386,7 +386,7 @@ SELECT
 FROM marvel_avengers
 GROUP BY platform;
 
--- Q.34 (Facebook,Meta) Assume you're given two tables containing data about Facebook Pages and their respective likes (as in "Like a Facebook Page").
+-- Q.34 (Facebook,Meta - Page With No Likes) Assume you're given two tables containing data about Facebook Pages and their respective likes (as in "Like a Facebook Page").
 -- Write a query to return the IDs of the Facebook pages that have zero likes. The output should be sorted in ascending order based on the page IDs.
 -- Soln
 SELECT p.page_id
@@ -403,7 +403,7 @@ WHERE page_id NOT IN (
   WHERE page_id IS NOT NULL
 );
 
--- Q.35 (FACEBOOK) Given a table of Facebook posts, for each user who posted at least twice in 2021, write a query to find the number of days between each 
+-- Q.35 (FACEBOOK - Average Post Hiatus (Part 1)) Given a table of Facebook posts, for each user who posted at least twice in 2021, write a query to find the number of days between each 
 -- user’s first post of the year and last post of the year in the year 2021. Output the user and number of the days between each user's first and last post.
 -- Soln
 SELECT user_id, (MAX(DATE(post_date))-MIN(DATE(post_date))) AS date_diff
@@ -412,7 +412,7 @@ WHERE EXTRACT(YEAR FROM post_date) = 2021
 GROUP BY user_id
 HAVING COUNT(post_id) > 1;
 
--- Q.36 (TikTok) Assume you're given tables with information about TikTok user sign-ups and confirmations through email and text. 
+-- Q.36 (TikTok - Second Day Confirmation) Assume you're given tables with information about TikTok user sign-ups and confirmations through email and text. 
 -- New users on TikTok sign up using their email addresses, and upon sign-up, each user receives a text message confirmation to activate their account.
 -- Write a query to display the user IDs of those who did not confirm their sign-up on the first day, but confirmed on the second day.
 -- Definition: action_date refers to the date when users activated their accounts and confirmed their sign-up through text messages.
@@ -666,7 +666,7 @@ WHERE b1.book_id != b2.book_id
 ORDER BY b1.book_title
 LIMIT 50;
 
--- Q.48 Companies often perform salary analyses to ensure fair compensation practices. One useful analysis is to check if there are any employees earning
+-- Q.48 (Well Paid Employees) Companies often perform salary analyses to ensure fair compensation practices. One useful analysis is to check if there are any employees earning
 -- more than their direct managers. As a HR Analyst, you're asked to identify all employees who earn more than their direct managers.
 -- The result should include the employee's ID and name.
 -- Soln
@@ -734,7 +734,7 @@ SELECT *
 FROM customers
 WHERE lower(customer_name) LIKE '%son' AND age = 20;
 
--- Q.53 Mss - customer count who bou from single store
+-- Q.53 (Hansa cequity) Mss - customer count who bou from single store
 --      SSS - customer count who buy from multiple store
 --      Give count of both
 -- Soln
@@ -748,7 +748,7 @@ FROM (
 ) AS subquery;
 
 
--- Q.53 Give count of customer sum whose order amount exceed 2000 and count of those whose sum of order amount les than 2000
+-- Q.53 (Hansa cequity) Give count of customer sum whose order amount exceed 2000 and count of those whose sum of order amount les than 2000
 -- Soln
 SELECT 
     COUNT(CASE WHEN total_amount >= 2000 THEN 1 END) AS customers_above_equal_2000,
@@ -758,3 +758,128 @@ FROM (
     FROM orders
     GROUP BY customer_id
 ) AS subquery;
+
+-- Q.54 (Twitter - Histogram of Tweets) Assume you're given a table Twitter tweet data, write a query to obtain a histogram of tweets posted per user in 2022. 
+-- Output the tweet count per user as the bucket and the number of Twitter users who fall into that bucket.
+-- In other words, group the users by the number of tweets they posted in 2022 and count the number of users in each group.
+-- Soln
+SELECT tweet_count_peruser AS tweet_bucket,
+	   COUNT(user_id) AS user_count
+FROM
+    (SELECT user_id, COUNT(tweet_id) AS tweet_count_peruser
+    FROM tweets
+    WHERE EXTRACT(YEAR FROM tweet_date) = 2022
+    GROUP BY user_id) AS tweet_per_user
+GROUP BY tweet_bucket
+ORDER BY tweet_bucket;
+
+-- Q.55 (MICROSOFT- Teams Power Users) Write a query to identify the top 2 Power Users who sent the highest number of messages on Microsoft Teams in August 2022. Display the IDs of
+--      these 2 users along with the total number of messages they sent. Output the results in descending order based on the count of the messages.
+--      Assumption: No two users have sent the same number of messages in August 2022.
+-- Soln
+SELECT sender_id, COUNT(message_id) as msg_count
+FROM messages
+WHERE EXTRACT(YEAR FROM sent_date) = '2022' AND EXTRACT(MONTH FROM sent_date) = '8'
+GROUP BY sender_id
+ORDER BY msg_count DESC
+LIMIT 2;
+
+-- Q.56 (LINKEDIN- Duplicate Job Listings) Assume you're given a table containing job postings from various companies on the LinkedIn platform. 
+--      Write a query to retrieve the count of companies that have posted duplicate job listings.
+--      Definition: Duplicate job listings are defined as two job listings within the same company that share identical titles and descriptions.
+-- Soln
+SELECT COUNT(num_of_comp) AS duplicate_companies
+FROM (
+        SELECT j.company_id, COUNT(*) AS num_of_comp
+        FROM job_listings j
+        JOIN job_listings k
+        ON j.job_id = k.job_id
+        WHERE j.title = k.title AND j.description = k.description
+        GROUP BY j.company_id
+        HAVING COUNT(*) > 1 ) AS duplicates;
+-- or
+WITH job_count_cte AS (
+  SELECT 
+    company_id, 
+    title, 
+    description, 
+    COUNT(job_id) AS job_count
+  FROM job_listings
+  GROUP BY company_id, title, description
+)
+
+SELECT COUNT(DISTINCT company_id) AS duplicate_companies
+FROM job_count_cte
+WHERE job_count > 1;
+
+-- Q.57 (Facebook - App Click-through Rate (CTR)) Assume you have an events table on Facebook app analytics. Write a query to calculate the click-through
+--      rate (CTR) for the app in 2022 and round the results to 2 decimal places.
+--      Definition and note: Percentage of click-through rate (CTR) = 100.0 * Number of clicks / Number of impressions
+--      To avoid integer division, multiply the CTR by 100.0, not 100.
+-- Soln
+SELECT app_id, 
+ROUND(100.0 *
+    COUNT(CASE WHEN event_type = 'click' THEN 1 ELSE NULL END) /
+    COUNT(CASE WHEN event_type = 'impression' THEN 1 ELSE NULL END), 2)  AS ctr_rate
+FROM events
+WHERE EXTRACT(YEAR FROM timestamp) = '2022'
+GROUP BY app_id ;
+
+-- or
+
+SELECT
+  app_id,
+  ROUND(100.0 *
+    SUM(CASE WHEN event_type = 'click' THEN 1 ELSE 0 END) /
+    SUM(CASE WHEN event_type = 'impression' THEN 1 ELSE 0 END), 2)  AS ctr_rate
+FROM events
+WHERE timestamp >= '2022-01-01' 
+  AND timestamp < '2023-01-01'
+GROUP BY app_id;
+
+-- or 
+
+SELECT
+  app_id,
+  ROUND(100.0 *
+    SUM(1) FILTER (WHERE event_type = 'click') /
+    SUM(1) FILTER (WHERE event_type = 'impression'), 2) AS ctr_app
+FROM events
+WHERE timestamp >= '2022-01-01' 
+  AND timestamp < '2023-01-01'
+GROUP BY app_id;
+
+-- Q.58 (IBM - IBM db2 Product Analytics) IBM is analyzing how their employees are utilizing the Db2 database by tracking the SQL queries executed by their 
+--      employees. The objective is to generate data to populate a histogram that shows the number of unique queries run by employees during the third quarter of 2023
+--      (July to September). Additionally, it should count the number of employees who did not run any queries during this period.
+--      Display the number of unique queries as histogram categories, along with the count of employees who executed that number of unique queries. 
+-- Soln
+WITH employee_queries AS (
+  SELECT e.employee_id,
+		 COALESCE(COUNT(DISTINCT q.query_id), 0) AS unique_queries
+  FROM employees AS e
+  LEFT JOIN queries AS q
+    ON e.employee_id = q.employee_id
+      AND q.query_starttime >= '2023-07-01T00:00:00Z'
+      AND q.query_starttime < '2023-10-01T00:00:00Z'
+  GROUP BY e.employee_id
+)
+SELECT
+  unique_queries,
+  COUNT(employee_id) AS employee_count
+FROM employee_queries
+GROUP BY unique_queries
+ORDER BY unique_queries;
+
+-- Q.59 UnitedHealth Group (UHG) has a program called Advocate4Me, which allows policy holders (or, members) to call an advocate and receive support 
+--      for their health care needs – whether that's claims and benefits support, drug coverage, pre- and post-authorisation, medical records,
+--      emergency assistance, or member portal services.
+--      Write a query to find how many UHG policy holders made three, or more calls, assuming each call is identified by the case_id column.
+-- Soln
+SELECT 
+    COUNT(policy_holder_id) AS policy_holder_count
+FROM (SELECT policy_holder_id, 
+             COUNT(case_id) AS call_count
+      FROM callers
+      GROUP BY policy_holder_id
+	  HAVING COUNT(case_id) >= 3) AS call_records;
